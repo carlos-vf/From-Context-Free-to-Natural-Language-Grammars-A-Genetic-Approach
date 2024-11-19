@@ -1,16 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-@author: carlos
-@version: 1.0
+Approximating Real Grammars from Context-free Languages using Grammar Evolution
+
+@author: Carlos Velazquez Fernandez
+@version: 2.0
 """
 
 import nltk
 from nltk.tokenize import word_tokenize
-import networkx as nx
-from networkx.drawing.nx_pydot import graphviz_layout
 import random
-import matplotlib.pyplot as plt
-
 
 
 
@@ -124,32 +122,16 @@ def generate_rules(start, nonterminal, preterminal, max_children, max_length):
 
 
 # List of well-constructed sentences
-good_sentences = [
-    "The sun sets in the west.",
-    "After a long day at work, she enjoys reading by the fireplace.",
-    "Please remember to close the door quietly when you leave.",
-    "Although he was tired, he finished the report before the deadline.",
-    "They visited the museum and learned a lot about ancient cultures.",
-    "If you go to the store, could you pick up some milk?",
-    "The company announced a new product that aims to reduce plastic waste.",
-    "Without a clear plan, the team struggled to complete the project on time.",
-    "She looked at the sky, admiring the colorful sunset.",
-    "Despite the heavy rain, the concert continued as planned."
-]
+with open("dataset/eng/correct.txt", "r") as file:
+    good_sentences = file.read()
+good_sentences = good_sentences.split('\n')
+
 
 # List of grammatically incorrect sentences with syntactical errors
-bad_sentences = [
-    "The store to went she for milk.",
-    "Dogs loud barks at night the.",
-    "Because traffic bad was late we.",
-    "The finish line him reached quickly by running.",
-    "Me can you give book that?",
-    "School I yesterday not went to.",
-    "Talking her loudly was him in library the.",
-    "Knows do not they the way park to.",
-    "In the basket many there apples are.",
-    "City the today crowded very."
-]
+with open("dataset/eng/wrong.txt", "r") as file:
+    bad_sentences = file.read()
+bad_sentences = bad_sentences.split('\n')
+
 
 
 # Load nltk models
