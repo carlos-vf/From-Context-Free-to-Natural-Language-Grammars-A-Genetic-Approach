@@ -3,28 +3,30 @@
 Approximating Real Grammars from Context-free Languages using Grammar Evolution
 
 @author: Carlos Velazquez Fernandez
-@version: 2.0
+@version: 3.0
 """
 
 
 import random
-import YAEP
-from YAEP import earley
-from YAEP import utils
-
 import grammar_tools as gt
+import statistics
+import earleyparser as ep
+from collections import Counter
 
 
-
-
-def initialize_population(start, nonterminal, preterminal, n_individuals):
+def initialize_population(start, nonterminal, preterminal, lexicon, n_individuals):
     
     population = []
     
     for i in range(n_individuals):
         
-        rules = generate_rules(start, nonterminal, preterminal, 5, 2)
-        population.append(rules)
+        rules = generate_rules(start, nonterminal, preterminal, 5, 3)
+        
+        # Compute the whole grammar of the CFL
+        grammar = gt.get_full_grammar(rules, lexicon)
+        formated_grammar = gt.format_grammar(grammar)
+        
+        population.append(formated_grammar)
 
         
     return population
@@ -101,58 +103,63 @@ def generate_rules(start, nonterminal, preterminal, max_children, max_length):
 
 
 
-def compute_fitnesses(population, lexicon, correct_examples, wrong_examples):
+def compute_fitnesses(population, correct_examples, wrong_examples):
     
     fitnesses = []
     
     for individual in population:
-        fitnesses.append(fitness(individual, lexicon, correct_examples, wrong_examples))
+        f = fitness(individual, correct_examples, wrong_examples)
+        fitnesses.append(f)
+
         
     return fitnesses
 
     
     
-def fitness(individual, lexicon, correct_examples, wrong_examples):
-    '''
-    TP + TN
-    '''
-    # Compute the whole grammar of the CFL
-    grammar = gt.get_full_grammar(individual, lexicon)
+def fitness(individual, correct_examples, wrong_examples):
+    """
+    Summary
+    ----------
+    Computes the fitness for an individual. The individual (grammar) operates over a 
+    dataset of examples (sentences). The fitness funtions is the sum of well-formed sentences
+    that can be parsed given the grammar of the individual and the bad-formed sentences
+    that cannot be parsed given the same grammar.
     
-    # Format the grammar in the input form for the library
-    formated_grammar = gt.format_grammar(grammar)
+    fitness = true positives + true negarives
+
+
+    Parameters
+    ----------
+    individual: the grammar
+    
+    correct_examples: set of (tokenized) well-formed sentences
+    
+    wrong_examples: set of (tokenized) bad-formed sentences
+    
+
+    Returns
+    -------
+    fitness score (float).
+    """
     
     tp = 0
     tn = 0
 
     # Try to parse every correct sentence
     for sentence in correct_examples:
-        #try:
-        sentence = ['the', 'sun', 'sets']
-        formated_grammar = {'S':[['NP']], 'NP':[['DET', 'NOUN', 'VERB']], 'DET':[['the']], 'NOUN':[['sun']], 'VERB':[['sets']]}
-        chart = earley.Earley().earley_parse(sentence, formated_grammar)
-        parsed = [s for s in chart[-1] if s.left == 'S']
-# =============================================================================
-#         except Exception:
-#             print(sentence)
-#             print(grammar)
-# =============================================================================
-    
-        if len(parsed) != 0:
+        parsed = ep.parse(sentence, individual)
+
+        if parsed != None:
             tp += 1
         
-            
-    
+        
     # Try to parse every wrong sentence
     for sentence in wrong_examples:
-        chart = earley.Earley().earley_parse(sentence, formated_grammar)
-        parsed = [s for s in chart[-1] if s.left == 'S']
-    
-        if len(parsed) == 0:
+        parsed = ep.parse(sentence, individual)
+
+        if parsed == None:
             tn += 1
-            
-    #print("TRUE POSITIVES: ", tp)
-    #print("TRUE NEGATIVES: ", tn, "\n")
+      
             
     return tp+tn
     
@@ -218,18 +225,18 @@ print("Done!\n")
 ############################ GRAMMAR EVOLUTION ################################
 ###############################################################################
 
+random.seed(134)
+
 print("Starting evolutionary algorithm...\n")
 
 # Initialization of the population
-population = initialize_population(start, nonterminal, preterminal, n_individuals=1)
+population = initialize_population(start, nonterminal, preterminal, lexicon, n_individuals=1000)
+
 
 # Fitness of the individuals
-fitnesses = compute_fitnesses(population, lexicon, good_preprocessed, bad_preprocessed)
-
-for index,i in enumerate(population):
-    pass
-    #print(f'{index}: {i}')
-    #print(f'{index} fitness: {fitnesses[i]}')
+fitnesses = compute_fitnesses(population, good_preprocessed, bad_preprocessed)
+print("\nAverage fitness of the population:", statistics.mean(fitnesses))
+print(Counter(fitnesses))
 
 
 
