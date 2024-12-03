@@ -8,7 +8,6 @@ Grammar tools library
 
 import nltk
 from nltk.tokenize import word_tokenize
-import copy
 
 
 def tokenize(sentences):

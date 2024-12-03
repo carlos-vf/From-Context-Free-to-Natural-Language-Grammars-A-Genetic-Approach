@@ -230,7 +230,7 @@ random.seed(134)
 print("Starting evolutionary algorithm...\n")
 
 # Initialization of the population
-population = initialize_population(start, nonterminal, preterminal, lexicon, n_individuals=1000)
+population = initialize_population(start, nonterminal, preterminal, lexicon, n_individuals=200)
 
 
 # Fitness of the individuals
