@@ -12,6 +12,7 @@ import grammar_tools as gt
 import statistics
 import earleyparser as ep
 from collections import Counter
+import numpy as np
 
 
 def initialize_population(start, nonterminal, preterminal, lexicon, n_individuals):
@@ -20,7 +21,7 @@ def initialize_population(start, nonterminal, preterminal, lexicon, n_individual
     
     for i in range(n_individuals):
         
-        rules = generate_rules(start, nonterminal, preterminal, 5, 3)
+        rules = generate_rules(start, nonterminal, preterminal, 8, 5)
         
         # Compute the whole grammar of the CFL
         grammar = gt.get_full_grammar(rules, lexicon)
@@ -165,7 +166,154 @@ def fitness(individual, correct_examples, wrong_examples):
     
 
 
+def selection(population, fitness, t_size):
+    
+    n = len(population)
+    
+    # Select tournament participants
+    participants = np.random.choice(n, t_size)
+    
+    # Tournament
+    winners = []
+    for i in range(int(t_size/2)):
+        
+        indiv_a_index = participants[i]
+        indiv_b_index = participants[t_size-i-1]
+        
+        indiv_a_fintess = fitness[indiv_a_index]
+        indiv_b_fintess = fitness[indiv_b_index]
+        
+        indiv_a = population[indiv_a_index]
+        indiv_b = population[indiv_b_index]
+        
+        if indiv_a_fintess >= indiv_b_fintess:
+            winners.append(indiv_a)
+        
+        else:
+            winners.append(indiv_b)
+            
+            
+    return winners
+        
+        
+    
+    
+    
+def compute_crossovers(population, n_children, symbols):
+    
+    new_population = []
+    
+    for i in range(0, len(population), 2):
+        for j in range(n_children):
+            
+            new_individual = crossover(population[i], population[i+1], symbols)
+            new_population.append(new_individual)
+        
+    return new_population
+        
+        
+    
+def crossover(parent_a, parent_b, symbols):
+    
+    new_individual = {}
+    
+    for key in parent_a.keys():
+        
+        # If it is a non-terminal (or starting) symbol
+        if key in symbols:
+            
+            a_rule = parent_a[key]
+            b_rule = parent_b[key]
+            
+            possible_rules = a_rule + b_rule
+            possible_rules =[list(tup) for tup in set(tuple(sublist) for sublist in possible_rules)]
+            n_children = np.random.randint(len(possible_rules)) + 1
+            
+            new_rules = random.sample(possible_rules, n_children)
+            new_individual[key] = new_rules
+        
+        # Otherwise, the rules are copied (preterminal rules cannot be mutated)
+        else:
+            new_individual[key] = parent_a[key]
+            
+    return new_individual
+    
+    
+    
 
+def compute_mutations(population, probability, start, nonterminal, preterminal):
+    
+    new_population = []
+    
+    for i in population:
+        new_indiv = mutation(i, probability, start, nonterminal, preterminal)
+        new_population.append(new_indiv)
+        
+    return new_population
+
+
+
+def mutation(individual, probability, start, nonterminal, preterminal):
+    
+    new_indiv = {}
+    
+    for key, rules in individual.items():
+        
+        # For the starting symbol
+        if key == start:
+            new_rules = []
+            
+            for rule in rules:
+                new_rule = []
+                
+                for symbol in rule:
+                    
+                    mutation = np.random.choice(2, 1, [0.9, 0.1])[0]
+                    
+                    if mutation:
+                        new_set = sorted(nonterminal)
+                        new_set.remove(symbol)
+                        new_symbol = random.sample(new_set, 1)
+                        
+                    else:
+                        new_symbol = symbol
+                        
+                    new_rule.append(symbol)
+                new_rules.append(rules)
+                    
+                        
+        # For non terminals
+        elif key in nonterminal:
+            new_rules = []
+            
+            for rule in rules:
+                new_rule = []
+                
+                for symbol in rule:
+                    
+                    mutation = np.random.choice(2, 1, [0.9, 0.1])[0]
+                    
+                    if mutation:
+                        new_set = sorted(nonterminal.union(preterminal))
+                        new_set.remove(symbol)
+                        new_symbol = random.sample(new_set, 1)
+                        
+                    else:
+                        new_symbol = symbol
+                        
+                    new_rule.append(symbol)
+                new_rules.append(rules)
+        
+        # Otherwise
+        else:
+            new_indiv[key] = rules
+            
+    return new_indiv
+    
+    
+    
+
+    
 
 ###############################################################################
 ################################## DATASET ####################################
@@ -225,18 +373,56 @@ print("Done!\n")
 ############################ GRAMMAR EVOLUTION ################################
 ###############################################################################
 
-random.seed(134)
+#random.seed(124)
 
 print("Starting evolutionary algorithm...\n")
 
+
 # Initialization of the population
-population = initialize_population(start, nonterminal, preterminal, lexicon, n_individuals=200)
+print("Initialazing population...\n")
+n_individuals = 200
+population = initialize_population(start, nonterminal, preterminal, lexicon, n_individuals)
+
+results = []
+
+while(True):
+    # Fitness of the individuals
+    print("Computing fitness...\n")
+    fitnesses = compute_fitnesses(population, good_preprocessed, bad_preprocessed)
+    #print("\nAverage fitness of the population:", statistics.mean(fitnesses), "\n")
+    #print(Counter(fitnesses))
+    
+    
+    # Tournament selection
+    print("Creating tournament...\n")
+    t_size = int(n_individuals / 2)
+    selected_individuals = selection(population, fitnesses, t_size)
+    
+    
+    # Crossover
+    print("Performing crossover...\n")
+    children_per_cross = 8
+    new_children = compute_crossovers(selected_individuals, children_per_cross, set(start).union(set(nonterminal)))
+    
+    
+    # Mutation
+    print("Applying mutation...\n")
+    p_mutation = 0.1
+    population = compute_mutations(new_children, p_mutation, start, nonterminal, preterminal)
+
+    results.append(statistics.mean(fitnesses))
+    print(results)
+    print(Counter(fitnesses))
 
 
-# Fitness of the individuals
-fitnesses = compute_fitnesses(population, good_preprocessed, bad_preprocessed)
-print("\nAverage fitness of the population:", statistics.mean(fitnesses))
-print(Counter(fitnesses))
+
+
+
+
+
+
+
+
 
 
 
