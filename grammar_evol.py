@@ -21,7 +21,7 @@ def initialize_population(start, nonterminal, preterminal, lexicon, n_individual
     
     for i in range(n_individuals):
         
-        rules = generate_rules(start, nonterminal, preterminal, 8, 5)
+        rules = generate_rules(start, nonterminal, preterminal, 10, 3)
         
         # Compute the whole grammar of the CFL
         grammar = gt.get_full_grammar(rules, lexicon)
@@ -268,18 +268,20 @@ def mutation(individual, probability, start, nonterminal, preterminal):
                 
                 for symbol in rule:
                     
-                    mutation = np.random.choice(2, 1, [0.9, 0.1])[0]
+                    mutation = np.random.choice(2, 1, [1-probability, probability])[0]
                     
                     if mutation:
                         new_set = sorted(nonterminal)
                         new_set.remove(symbol)
-                        new_symbol = random.sample(new_set, 1)
+                        new_symbol = random.sample(new_set, 1)[0]
                         
                     else:
                         new_symbol = symbol
                         
-                    new_rule.append(symbol)
-                new_rules.append(rules)
+                    new_rule.append(new_symbol)
+                new_rules.append(new_rule)
+
+            new_indiv[key] = new_rules
                     
                         
         # For non terminals
@@ -291,18 +293,20 @@ def mutation(individual, probability, start, nonterminal, preterminal):
                 
                 for symbol in rule:
                     
-                    mutation = np.random.choice(2, 1, [0.9, 0.1])[0]
+                    mutation = np.random.choice(2, 1, [1-probability, probability])[0]
                     
                     if mutation:
                         new_set = sorted(nonterminal.union(preterminal))
                         new_set.remove(symbol)
-                        new_symbol = random.sample(new_set, 1)
+                        new_symbol = random.sample(new_set, 1)[0]
                         
                     else:
                         new_symbol = symbol
                         
-                    new_rule.append(symbol)
-                new_rules.append(rules)
+                    new_rule.append(new_symbol)
+                new_rules.append(new_rule)
+
+            new_indiv[key] = new_rules
         
         # Otherwise
         else:
@@ -382,7 +386,7 @@ print("Starting evolutionary algorithm...\n")
 print("Initialazing population...\n")
 n_individuals = 200
 population = initialize_population(start, nonterminal, preterminal, lexicon, n_individuals)
-
+#print(population[2])
 results = []
 
 while(True):
@@ -404,7 +408,6 @@ while(True):
     children_per_cross = 8
     new_children = compute_crossovers(selected_individuals, children_per_cross, set(start).union(set(nonterminal)))
     
-    
     # Mutation
     print("Applying mutation...\n")
     p_mutation = 0.1
@@ -413,6 +416,8 @@ while(True):
     results.append(statistics.mean(fitnesses))
     print(results)
     print(Counter(fitnesses))
+
+    #print(population[2])
 
 
 
