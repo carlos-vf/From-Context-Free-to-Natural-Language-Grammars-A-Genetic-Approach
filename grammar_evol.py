@@ -13,15 +13,16 @@ import statistics
 import earleyparser as ep
 from collections import Counter
 import numpy as np
+import neptune
 
 
-def initialize_population(start, nonterminal, preterminal, lexicon, n_individuals):
+def initialize_population(start, nonterminal, preterminal, lexicon, n_individuals, max_rules, max_symbols):
     
     population = []
     
     for i in range(n_individuals):
         
-        rules = generate_rules(start, nonterminal, preterminal, 10, 3)
+        rules = generate_rules(start, nonterminal, preterminal, max_rules, max_symbols)
         
         # Compute the whole grammar of the CFL
         grammar = gt.get_full_grammar(rules, lexicon)
@@ -191,13 +192,11 @@ def selection(population, fitness, t_size):
         
         else:
             winners.append(indiv_b)
-            
-            
+
+                 
     return winners
         
-        
-    
-    
+           
     
 def compute_crossovers(population, n_children, symbols):
     
@@ -239,7 +238,6 @@ def crossover(parent_a, parent_b, symbols):
     return new_individual
     
     
-    
 
 def compute_mutations(population, probability, start, nonterminal, preterminal):
     
@@ -268,7 +266,7 @@ def mutation(individual, probability, start, nonterminal, preterminal):
                 
                 for symbol in rule:
                     
-                    mutation = np.random.choice(2, 1, [1-probability, probability])[0]
+                    mutation = np.random.choice(2, 1, p=[1-probability, probability])[0]
                     
                     if mutation:
                         new_set = sorted(nonterminal)
@@ -293,7 +291,7 @@ def mutation(individual, probability, start, nonterminal, preterminal):
                 
                 for symbol in rule:
                     
-                    mutation = np.random.choice(2, 1, [1-probability, probability])[0]
+                    mutation = np.random.choice(2, 1, p=[1-probability, probability])[0]
                     
                     if mutation:
                         new_set = sorted(nonterminal.union(preterminal))
@@ -318,6 +316,16 @@ def mutation(individual, probability, start, nonterminal, preterminal):
     
 
     
+###############################################################################
+################################## NEPTUNE ####################################
+###############################################################################
+
+run = neptune.init_run(
+    project="carlos-vf/Evolutive-Context-Free-Grammars",
+    api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiIxOGI4MjZjOC05MGJmLTQyNmEtOWFjYS04MDU4MTRhMjdiMDMifQ==",
+)  # your credentials
+
+
 
 ###############################################################################
 ################################## DATASET ####################################
@@ -377,47 +385,77 @@ print("Done!\n")
 ############################ GRAMMAR EVOLUTION ################################
 ###############################################################################
 
-#random.seed(124)
+# Paramters
+n_individuals = 120
+max_rules = 10
+max_symbols = 3
+p_mutation = 0.05
+
+params = {  "n_individuals": n_individuals,
+            "max_rules" : max_rules,
+            "max_symbols" : max_symbols,
+            "p_mutation" : p_mutation}
+run["parameters"] = params
+
 
 print("Starting evolutionary algorithm...\n")
 
 
 # Initialization of the population
 print("Initialazing population...\n")
-n_individuals = 200
-population = initialize_population(start, nonterminal, preterminal, lexicon, n_individuals)
-#print(population[2])
+population = initialize_population(start, nonterminal, preterminal, lexicon, n_individuals, max_rules, max_symbols)
 results = []
+best_individual = [0,0,0] # [individual, fitness, iteration]
+i = 0
 
-while(True):
+while(best_individual[1] < len(sentences) and i < 20):
+
     # Fitness of the individuals
-    print("Computing fitness...\n")
+    #print("Computing fitness...\n")
     fitnesses = compute_fitnesses(population, good_preprocessed, bad_preprocessed)
-    #print("\nAverage fitness of the population:", statistics.mean(fitnesses), "\n")
-    #print(Counter(fitnesses))
-    
+    best_fitness = max(fitnesses)
+    if best_fitness > best_individual[1]:
+        index_max = max(range(len(fitnesses)), key=fitnesses.__getitem__)
+        best_individual = [population[index_max], best_fitness, i]
+
     
     # Tournament selection
-    print("Creating tournament...\n")
-    t_size = int(n_individuals / 2)
+    #print("Creating tournament...\n")
+    t_size = int(n_individuals)
     selected_individuals = selection(population, fitnesses, t_size)
     
     
     # Crossover
-    print("Performing crossover...\n")
-    children_per_cross = 8
+    #print("Performing crossover...\n")
+    children_per_cross = 4
     new_children = compute_crossovers(selected_individuals, children_per_cross, set(start).union(set(nonterminal)))
     
+
     # Mutation
-    print("Applying mutation...\n")
-    p_mutation = 0.1
+    #print("Applying mutation...\n")
     population = compute_mutations(new_children, p_mutation, start, nonterminal, preterminal)
 
-    results.append(statistics.mean(fitnesses))
-    print(results)
-    print(Counter(fitnesses))
 
-    #print(population[2])
+    # Report
+    avg_fitness = statistics.mean(fitnesses)
+    results.append(avg_fitness)
+
+    print(f'Iteration {i}')
+    print(f'Average fitness = {avg_fitness}')
+    print(f'Fitness of each individual = {Counter(fitnesses)}')
+    print(f"Results until now: {results}")
+    print(f'Best individual: {best_individual}')
+    
+    run["eval/avg_fitness"].append(avg_fitness)
+    run["eval/best_fitness"].append(best_fitness)
+    run["eval/best_iteration"].append(best_individual[2])
+    run["train/best_individual"].append(best_individual[0])
+
+    i += 1
+
+run.stop()  
+
+
 
 
 
