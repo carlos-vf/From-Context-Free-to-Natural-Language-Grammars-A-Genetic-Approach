@@ -14,6 +14,7 @@ import earleyparser as ep
 from collections import Counter
 import numpy as np
 import neptune
+import time
 
 
 def initialize_population(start, nonterminal, preterminal, lexicon, n_individuals, max_rules, max_symbols):
@@ -198,21 +199,21 @@ def selection(population, fitness, t_size):
         
            
     
-def compute_crossovers(population, n_children, symbols):
+def compute_crossovers(population, n_children, symbols, max_rules):
     
     new_population = []
     
     for i in range(0, len(population), 2):
         for j in range(n_children):
             
-            new_individual = crossover(population[i], population[i+1], symbols)
+            new_individual = crossover(population[i], population[i+1], symbols, max_rules)
             new_population.append(new_individual)
         
     return new_population
         
         
     
-def crossover(parent_a, parent_b, symbols):
+def crossover(parent_a, parent_b, symbols, max_rules):
     
     new_individual = {}
     
@@ -226,6 +227,7 @@ def crossover(parent_a, parent_b, symbols):
             
             possible_rules = a_rule + b_rule
             possible_rules =[list(tup) for tup in set(tuple(sublist) for sublist in possible_rules)]
+            #n_children = min(np.random.randint(len(possible_rules)) + 1, max_rules)
             n_children = np.random.randint(len(possible_rules)) + 1
             
             new_rules = random.sample(possible_rules, n_children)
@@ -320,10 +322,13 @@ def mutation(individual, probability, start, nonterminal, preterminal):
 ################################## NEPTUNE ####################################
 ###############################################################################
 
-run = neptune.init_run(
-    project="carlos-vf/Evolutive-Context-Free-Grammars",
-    api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiIxOGI4MjZjOC05MGJmLTQyNmEtOWFjYS04MDU4MTRhMjdiMDMifQ==",
-)  # your credentials
+neptune_sync = True
+
+if neptune_sync:
+    run = neptune.init_run(
+        project="carlos-vf/Evolutive-Context-Free-Grammars",
+        api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiIxOGI4MjZjOC05MGJmLTQyNmEtOWFjYS04MDU4MTRhMjdiMDMifQ==",
+    )  # your credentials
 
 
 
@@ -389,13 +394,16 @@ print("Done!\n")
 n_individuals = 120
 max_rules = 10
 max_symbols = 3
-p_mutation = 0.05
+p_mutation = 0.1
+max_iter = 100
 
-params = {  "n_individuals": n_individuals,
-            "max_rules" : max_rules,
-            "max_symbols" : max_symbols,
-            "p_mutation" : p_mutation}
-run["parameters"] = params
+if neptune_sync:
+    params = {  "n_individuals": n_individuals,
+                "max_rules" : max_rules,
+                "max_symbols" : max_symbols,
+                "p_mutation" : p_mutation}
+    run["parameters"] = params
+    run["sys/tags"].add([f"{i}={j}" for (i,j) in params.items()])
 
 
 print("Starting evolutionary algorithm...\n")
@@ -408,7 +416,9 @@ results = []
 best_individual = [0,0,0] # [individual, fitness, iteration]
 i = 0
 
-while(best_individual[1] < len(sentences) and i < 20):
+while(best_individual[1] < len(sentences) and i < max_iter):
+
+    t1 = time.time()
 
     # Fitness of the individuals
     #print("Computing fitness...\n")
@@ -428,7 +438,7 @@ while(best_individual[1] < len(sentences) and i < 20):
     # Crossover
     #print("Performing crossover...\n")
     children_per_cross = 4
-    new_children = compute_crossovers(selected_individuals, children_per_cross, set(start).union(set(nonterminal)))
+    new_children = compute_crossovers(selected_individuals, children_per_cross, set(start).union(set(nonterminal)), max_rules)
     
 
     # Mutation
@@ -439,6 +449,8 @@ while(best_individual[1] < len(sentences) and i < 20):
     # Report
     avg_fitness = statistics.mean(fitnesses)
     results.append(avg_fitness)
+    best_indiv_size = len([item for sublist in best_individual[0].keys() for item in sublist])
+    t = time.time() - t1
 
     print(f'Iteration {i}')
     print(f'Average fitness = {avg_fitness}')
@@ -446,25 +458,21 @@ while(best_individual[1] < len(sentences) and i < 20):
     print(f"Results until now: {results}")
     print(f'Best individual: {best_individual}')
     
-    run["eval/avg_fitness"].append(avg_fitness)
-    run["eval/best_fitness"].append(best_fitness)
-    run["eval/best_iteration"].append(best_individual[2])
-    run["train/best_individual"].append(best_individual[0])
+    if neptune_sync:
+        run["eval/avg_fitness"].append(avg_fitness)
+        run["eval/best_fitness"].append(best_fitness)
+        run["eval/best_iteration"].append(best_individual[2])
+        run["eval/best_indiv_size"].append(best_indiv_size)
+        run["eval/iter_time"].append(t)
+
+        # TODO
+        # time of iteration
+        # Parallelize?
 
     i += 1
 
-run.stop()  
-
-
-
-
-
-
-
-
-
-
-
+if neptune_sync:
+    run.stop()  
 
 
 
