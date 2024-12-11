@@ -16,6 +16,9 @@ import numpy as np
 import neptune
 import time
 
+from multiprocessing import Pool
+from functools import partial
+
 
 def initialize_population(start, nonterminal, preterminal, lexicon, n_individuals, max_rules, max_symbols):
     
@@ -108,11 +111,16 @@ def generate_rules(start, nonterminal, preterminal, max_children, max_length):
 
 def compute_fitnesses(population, correct_examples, wrong_examples):
     
-    fitnesses = []
+    #fitnesses = []
+
+    partial_function = partial(fitness, correct_examples=correct_examples, wrong_examples=wrong_examples)
     
-    for individual in population:
+    with Pool() as pool:
+        fitnesses = pool.map(partial_function, population)  # Only pass `obj` from objects
+    
+    """ for individual in population:
         f = fitness(individual, correct_examples, wrong_examples)
-        fitnesses.append(f)
+        fitnesses.appcend(f) """
 
         
     return fitnesses
@@ -317,162 +325,163 @@ def mutation(individual, probability, start, nonterminal, preterminal):
     
     
 
-    
+   
 ###############################################################################
 ################################## NEPTUNE ####################################
 ###############################################################################
+if __name__ == '__main__':
 
-neptune_sync = True
+    neptune_sync = True
 
-if neptune_sync:
-    run = neptune.init_run(
-        project="carlos-vf/Evolutive-Context-Free-Grammars",
-        api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiIxOGI4MjZjOC05MGJmLTQyNmEtOWFjYS04MDU4MTRhMjdiMDMifQ==",
-    )  # your credentials
-
-
-
-###############################################################################
-################################## DATASET ####################################
-###############################################################################
-
-print("\nLoading dataset...")
-
-# List of well-constructed sentences
-with open("dataset/eng/correct.txt", "r") as file:
-    good_sentences = file.read()
-good_sentences = good_sentences.split('\n')
-
-
-# List of grammatically incorrect sentences with syntactical errors
-with open("dataset/eng/wrong.txt", "r") as file:
-    bad_sentences = file.read()
-bad_sentences = bad_sentences.split('\n')
-
-print("Done!\n")
-
-
-###############################################################################
-######################## DEFINITION OF THE GRAMMAR ############################
-###############################################################################
-
-print("Defining grammar...")
-
-# Tokenization
-good_tokenized = gt.tokenize(good_sentences)
-bad_tokenized = gt.tokenize(bad_sentences)
-
-# Pre-processing (removing punctuation marks and lower-casing all the words)
-good_preprocessed = gt.preprocess(good_tokenized)
-bad_preprocessed = gt.preprocess(bad_tokenized)
-
-# Lexicon (dict of words with their possible (universal) POS tags)
-sentences = good_preprocessed + bad_preprocessed
-lexicon = gt.create_lexicon(sentences)
-
-# Terminal symbols or vocabulary (set of words of the grammar)
-terminal = gt.get_terminal(lexicon)
-
-# Preterminal symbols (symbols whose rules only go to terminal symbols)
-preterminal = gt.get_preterminal(lexicon)
-            
-# Non-terminal symbols
-nonterminal = {'NP', 'VP'}
-
-# Start symbol
-start = 'S'
-
-print("Done!\n")
-
-
-
-###############################################################################
-############################ GRAMMAR EVOLUTION ################################
-###############################################################################
-
-# Paramters
-n_individuals = 120
-max_rules = 10
-max_symbols = 3
-p_mutation = 0.1
-max_iter = 100
-
-if neptune_sync:
-    params = {  "n_individuals": n_individuals,
-                "max_rules" : max_rules,
-                "max_symbols" : max_symbols,
-                "p_mutation" : p_mutation}
-    run["parameters"] = params
-    run["sys/tags"].add([f"{i}={j}" for (i,j) in params.items()])
-
-
-print("Starting evolutionary algorithm...\n")
-
-
-# Initialization of the population
-print("Initialazing population...\n")
-population = initialize_population(start, nonterminal, preterminal, lexicon, n_individuals, max_rules, max_symbols)
-results = []
-best_individual = [0,0,0] # [individual, fitness, iteration]
-i = 0
-
-while(best_individual[1] < len(sentences) and i < max_iter):
-
-    t1 = time.time()
-
-    # Fitness of the individuals
-    #print("Computing fitness...\n")
-    fitnesses = compute_fitnesses(population, good_preprocessed, bad_preprocessed)
-    best_fitness = max(fitnesses)
-    if best_fitness > best_individual[1]:
-        index_max = max(range(len(fitnesses)), key=fitnesses.__getitem__)
-        best_individual = [population[index_max], best_fitness, i]
-
-    
-    # Tournament selection
-    #print("Creating tournament...\n")
-    t_size = int(n_individuals)
-    selected_individuals = selection(population, fitnesses, t_size)
-    
-    
-    # Crossover
-    #print("Performing crossover...\n")
-    children_per_cross = 4
-    new_children = compute_crossovers(selected_individuals, children_per_cross, set(start).union(set(nonterminal)), max_rules)
-    
-
-    # Mutation
-    #print("Applying mutation...\n")
-    population = compute_mutations(new_children, p_mutation, start, nonterminal, preterminal)
-
-
-    # Report
-    avg_fitness = statistics.mean(fitnesses)
-    results.append(avg_fitness)
-    best_indiv_size = len([item for sublist in best_individual[0].keys() for item in sublist])
-    t = time.time() - t1
-
-    print(f'Iteration {i}')
-    print(f'Average fitness = {avg_fitness}')
-    print(f'Fitness of each individual = {Counter(fitnesses)}')
-    print(f"Results until now: {results}")
-    print(f'Best individual: {best_individual}')
-    
     if neptune_sync:
-        run["eval/avg_fitness"].append(avg_fitness)
-        run["eval/best_fitness"].append(best_fitness)
-        run["eval/best_iteration"].append(best_individual[2])
-        run["eval/best_indiv_size"].append(best_indiv_size)
-        run["eval/iter_time"].append(t)
+        run = neptune.init_run(
+            project="carlos-vf/Evolutive-Context-Free-Grammars",
+            api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiIxOGI4MjZjOC05MGJmLTQyNmEtOWFjYS04MDU4MTRhMjdiMDMifQ==",
+        )  # your credentials
 
-        # TODO
-        # time of iteration
-        # Parallelize?
 
-    i += 1
 
-if neptune_sync:
-    run.stop()  
+    ###############################################################################
+    ################################## DATASET ####################################
+    ###############################################################################
+
+    print("\nLoading dataset...")
+
+    # List of well-constructed sentences
+    with open("dataset/eng/correct.txt", "r") as file:
+        good_sentences = file.read()
+    good_sentences = good_sentences.split('\n')
+
+
+    # List of grammatically incorrect sentences with syntactical errors
+    with open("dataset/eng/wrong.txt", "r") as file:
+        bad_sentences = file.read()
+    bad_sentences = bad_sentences.split('\n')
+
+    print("Done!\n")
+
+
+    ###############################################################################
+    ######################## DEFINITION OF THE GRAMMAR ############################
+    ###############################################################################
+
+    print("Defining grammar...")
+
+    # Tokenization
+    good_tokenized = gt.tokenize(good_sentences)
+    bad_tokenized = gt.tokenize(bad_sentences)
+
+    # Pre-processing (removing punctuation marks and lower-casing all the words)
+    good_preprocessed = gt.preprocess(good_tokenized)
+    bad_preprocessed = gt.preprocess(bad_tokenized)
+
+    # Lexicon (dict of words with their possible (universal) POS tags)
+    sentences = good_preprocessed + bad_preprocessed
+    lexicon = gt.create_lexicon(sentences)
+
+    # Terminal symbols or vocabulary (set of words of the grammar)
+    terminal = gt.get_terminal(lexicon)
+
+    # Preterminal symbols (symbols whose rules only go to terminal symbols)
+    preterminal = gt.get_preterminal(lexicon)
+                
+    # Non-terminal symbols
+    nonterminal = {'NP', 'VP'}
+
+    # Start symbol
+    start = 'S'
+
+    print("Done!\n")
+
+
+
+    ###############################################################################
+    ############################ GRAMMAR EVOLUTION ################################
+    ###############################################################################
+
+    # Paramters
+    n_individuals = 120
+    max_rules = 10
+    max_symbols = 3
+    p_mutation = 0.1
+    max_iter = 100
+
+    if neptune_sync:
+        params = {  "n_individuals": n_individuals,
+                    "max_rules" : max_rules,
+                    "max_symbols" : max_symbols,
+                    "p_mutation" : p_mutation}
+        run["parameters"] = params
+        run["sys/tags"].add([f"{i}={j}" for (i,j) in params.items()])
+
+
+    print("Starting evolutionary algorithm...\n")
+
+
+    # Initialization of the population
+    print("Initialazing population...\n")
+    population = initialize_population(start, nonterminal, preterminal, lexicon, n_individuals, max_rules, max_symbols)
+    results = []
+    best_individual = [0,0,0] # [individual, fitness, iteration]
+    i = 0
+
+    while(best_individual[1] < len(sentences) and i < max_iter):
+
+        t1 = time.time()
+
+        # Fitness of the individuals
+        #print("Computing fitness...\n")
+        
+        fitnesses = compute_fitnesses(population, good_preprocessed, bad_preprocessed)
+        best_fitness = max(fitnesses)
+        if best_fitness > best_individual[1]:
+            index_max = max(range(len(fitnesses)), key=fitnesses.__getitem__)
+            best_individual = [population[index_max], best_fitness, i]
+
+        
+        # Tournament selection
+        #print("Creating tournament...\n")
+        t_size = int(n_individuals)
+        selected_individuals = selection(population, fitnesses, t_size)
+        
+        
+        # Crossover
+        #print("Performing crossover...\n")
+        children_per_cross = 4
+        new_children = compute_crossovers(selected_individuals, children_per_cross, set(start).union(set(nonterminal)), max_rules)
+        
+
+        # Mutation
+        #print("Applying mutation...\n")
+        population = compute_mutations(new_children, p_mutation, start, nonterminal, preterminal)
+
+
+        # Report
+        avg_fitness = statistics.mean(fitnesses)
+        results.append(avg_fitness)
+        best_indiv_size = len([item for sublist in best_individual[0].values() for item in sublist])
+        t = time.time() - t1
+
+        print(f'Iteration {i}')
+        print(f'Average fitness = {avg_fitness}')
+        print(f'Fitness of each individual = {Counter(fitnesses)}')
+        print(f"Results until now: {results}")
+        print(f'Best individual: {best_individual}')
+        
+        if neptune_sync:
+            run["eval/avg_fitness"].append(avg_fitness)
+            run["eval/best_fitness"].append(best_fitness)
+            run["eval/best_iteration"].append(best_individual[2])
+            run["eval/best_indiv_size"].append(best_indiv_size)
+            run["eval/iter_time"].append(t)
+
+            # TODO
+            # Parallelize?
+
+        i += 1
+
+    if neptune_sync:
+        run.stop()  
 
 
 
