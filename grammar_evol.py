@@ -39,8 +39,6 @@ def initialize_population(start, nonterminal, preterminal, lexicon, n_individual
 
 
 
-
-
 def generate_rules(start, nonterminal, preterminal, max_children, max_length):
     """
     Summary
@@ -111,17 +109,10 @@ def generate_rules(start, nonterminal, preterminal, max_children, max_length):
 
 def compute_fitnesses(population, correct_examples, wrong_examples):
     
-    #fitnesses = []
-
     partial_function = partial(fitness, correct_examples=correct_examples, wrong_examples=wrong_examples)
     
     with Pool() as pool:
-        fitnesses = pool.map(partial_function, population)  # Only pass `obj` from objects
-    
-    """ for individual in population:
-        f = fitness(individual, correct_examples, wrong_examples)
-        fitnesses.appcend(f) """
-
+        fitnesses = pool.map(partial_function, population)
         
     return fitnesses
 
@@ -208,54 +199,61 @@ def selection(population, fitness, t_size):
            
     
 def compute_crossovers(population, n_children, symbols, max_rules):
+
+    parents = [[population[i],population[i+1]] for i in range(0, len(population), 2)]
+    partial_function = partial(crossover, symbols=symbols, max_rules=max_rules, n_children=n_children)
     
-    new_population = []
-    
-    for i in range(0, len(population), 2):
-        for j in range(n_children):
-            
-            new_individual = crossover(population[i], population[i+1], symbols, max_rules)
-            new_population.append(new_individual)
+    with Pool() as pool:
+        new_population = pool.map(partial_function, parents)
+
+    new_population = [indiv for sublist in new_population for indiv in sublist]
         
     return new_population
         
         
     
-def crossover(parent_a, parent_b, symbols, max_rules):
+def crossover(parents, symbols, max_rules, n_children):
     
-    new_individual = {}
-    
-    for key in parent_a.keys():
+    parent_a = parents[0]
+    parent_b = parents[1]
+    children = []
+
+    for i in range(n_children):
+
+        new_individual = {}
         
-        # If it is a non-terminal (or starting) symbol
-        if key in symbols:
+        for key in parent_a.keys():
             
-            a_rule = parent_a[key]
-            b_rule = parent_b[key]
+            # If it is a non-terminal (or starting) symbol
+            if key in symbols:
+                
+                a_rule = parent_a[key]
+                b_rule = parent_b[key]
+                
+                possible_rules = a_rule + b_rule
+                possible_rules =[list(tup) for tup in set(tuple(sublist) for sublist in possible_rules)]
+                #n_children = min(np.random.randint(len(possible_rules)) + 1, max_rules)
+                n_children = np.random.randint(len(possible_rules)) + 1
+                
+                new_rules = random.sample(possible_rules, n_children)
+                new_individual[key] = new_rules
             
-            possible_rules = a_rule + b_rule
-            possible_rules =[list(tup) for tup in set(tuple(sublist) for sublist in possible_rules)]
-            #n_children = min(np.random.randint(len(possible_rules)) + 1, max_rules)
-            n_children = np.random.randint(len(possible_rules)) + 1
+            # Otherwise, the rules are copied (preterminal rules cannot be mutated)
+            else:
+                new_individual[key] = parent_a[key]
+
+        children.append(new_individual)
             
-            new_rules = random.sample(possible_rules, n_children)
-            new_individual[key] = new_rules
-        
-        # Otherwise, the rules are copied (preterminal rules cannot be mutated)
-        else:
-            new_individual[key] = parent_a[key]
-            
-    return new_individual
+    return children
     
     
 
 def compute_mutations(population, probability, start, nonterminal, preterminal):
+
+    partial_function = partial(mutation, probability=probability, start=start, nonterminal=nonterminal, preterminal=preterminal)
     
-    new_population = []
-    
-    for i in population:
-        new_indiv = mutation(i, probability, start, nonterminal, preterminal)
-        new_population.append(new_indiv)
+    with Pool() as pool:
+        new_population = pool.map(partial_function, population)
         
     return new_population
 
@@ -404,7 +402,7 @@ if __name__ == '__main__':
     max_rules = 10
     max_symbols = 3
     p_mutation = 0.1
-    max_iter = 100
+    max_iter = 25
 
     if neptune_sync:
         params = {  "n_individuals": n_individuals,
