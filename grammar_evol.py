@@ -344,15 +344,16 @@ if __name__ == '__main__':
     ###############################################################################
 
     print("\nLoading dataset...")
+    lang = "eng"
 
     # List of well-constructed sentences
-    with open("dataset/eng/correct.txt", "r") as file:
+    with open(f"dataset/{lang}/correct.txt", "r") as file:
         good_sentences = file.read()
     good_sentences = good_sentences.split('\n')
 
 
     # List of grammatically incorrect sentences with syntactical errors
-    with open("dataset/eng/wrong.txt", "r") as file:
+    with open(f"dataset/{lang}/wrong.txt", "r") as file:
         bad_sentences = file.read()
     bad_sentences = bad_sentences.split('\n')
 
@@ -408,7 +409,8 @@ if __name__ == '__main__':
         params = {  "n_individuals": n_individuals,
                     "max_rules" : max_rules,
                     "max_symbols" : max_symbols,
-                    "p_mutation" : p_mutation}
+                    "p_mutation" : p_mutation,
+                    "dataset" : lang}
         run["parameters"] = params
         run["sys/tags"].add([f"{i}={j}" for (i,j) in params.items()])
 
@@ -458,6 +460,10 @@ if __name__ == '__main__':
         avg_fitness = statistics.mean(fitnesses)
         results.append(avg_fitness)
         best_indiv_size = len([item for sublist in best_individual[0].values() for item in sublist])
+        avg_indiv_size = []
+        for indiv in population:
+            avg_indiv_size.append(len([item for sublist in indiv.values() for item in sublist]))
+        avg_indiv_size = statistics.mean(avg_indiv_size)
         t = time.time() - t1
 
         print(f'Iteration {i}')
@@ -467,14 +473,18 @@ if __name__ == '__main__':
         print(f'Best individual: {best_individual}')
         
         if neptune_sync:
-            run["eval/avg_fitness"].append(avg_fitness)
-            run["eval/best_fitness"].append(best_fitness)
-            run["eval/best_iteration"].append(best_individual[2])
-            run["eval/best_indiv_size"].append(best_indiv_size)
-            run["eval/iter_time"].append(t)
 
-            # TODO
-            # Parallelize?
+            # Best individual up to now
+            run["eval/best_individual/fitness"].append(best_fitness)
+            run["eval/best_individual/size"].append(best_indiv_size)
+
+            # Current population
+            run["eval/population/avg_fitness"].append(avg_fitness)
+            run["eval/population/avg_size"].append(avg_indiv_size)
+
+            # Iteration
+            run["eval/iter/best"].append(best_individual[2])
+            run["eval/iter/time"].append(t)
 
         i += 1
 

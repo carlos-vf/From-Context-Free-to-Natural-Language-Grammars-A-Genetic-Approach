@@ -1,0 +1,11 @@
+{"obj": {"type": "AssignString", "path": ["sys", "description"], "value": ""}, "version": 1, "at": 1735210444.5032704}
+{"obj": {"type": "AssignString", "path": ["monitoring", "a5616e16", "hostname"], "value": "LAPTOP-M4GRAR4U"}, "version": 2, "at": 1735210444.5035906}
+{"obj": {"type": "AssignString", "path": ["sys", "hostname"], "value": "LAPTOP-M4GRAR4U"}, "version": 3, "at": 1735210444.50375}
+{"obj": {"type": "AssignString", "path": ["monitoring", "a5616e16", "pid"], "value": "15720"}, "version": 4, "at": 1735210444.503848}
+{"obj": {"type": "AssignString", "path": ["monitoring", "a5616e16", "tid"], "value": "17276"}, "version": 5, "at": 1735210444.5039139}
+{"obj": {"type": "AssignBool", "path": ["sys", "failed"], "value": false}, "version": 6, "at": 1735210444.5039744}
+{"obj": {"type": "ClearStringLog", "path": ["monitoring", "a5616e16", "stdout"]}, "version": 7, "at": 1735210444.5040526}
+{"obj": {"type": "ClearStringLog", "path": ["monitoring", "a5616e16", "stderr"]}, "version": 8, "at": 1735210444.5041168}
+{"obj": {"type": "AssignString", "path": ["source_code", "entrypoint"], "value": "grammar_evol.py"}, "version": 9, "at": 1735210444.5052204}
+{"obj": {"type": "UploadFileSet", "path": ["source_code", "files"], "file_globs": ["C:\\Users\\carlo\\Desktop\\Approximating-Real-Grammars-from-Context-free-Languages-using-Grammar-Evolution\\grammar_evol.py"], "reset": "False"}, "version": 10, "at": 1735210444.5053346}
+{"obj": {"type": "UploadFile", "path": ["source_code", "diff"], "ext": "patch", "file_path": null, "tmp_file_name": "source_code_diff-1735210444.607446-2024-12-26_11.54.04.607446.patch", "clean_after_upload": false}, "version": 11, "at": 1735210444.6084092}
