@@ -344,16 +344,16 @@ if __name__ == '__main__':
     ###############################################################################
 
     print("\nLoading dataset...")
-    lang = "eng"
+    lang = "esp"
 
     # List of well-constructed sentences
-    with open(f"dataset/{lang}/correct.txt", "r") as file:
+    with open(f"dataset/{lang}/correct.txt", "r", encoding="utf-8") as file:
         good_sentences = file.read()
     good_sentences = good_sentences.split('\n')
 
 
     # List of grammatically incorrect sentences with syntactical errors
-    with open(f"dataset/{lang}/wrong.txt", "r") as file:
+    with open(f"dataset/{lang}/wrong.txt", "r", encoding="utf-8") as file:
         bad_sentences = file.read()
     bad_sentences = bad_sentences.split('\n')
 
@@ -367,16 +367,19 @@ if __name__ == '__main__':
     print("Defining grammar...")
 
     # Tokenization
-    good_tokenized = gt.tokenize(good_sentences)
-    bad_tokenized = gt.tokenize(bad_sentences)
+    #good_tokenized = gt.tokenize(good_sentences)
+    #bad_tokenized = gt.tokenize(bad_sentences)
+    good_tokenized = [gt.tokenize(s) for s in good_sentences]
+    bad_tokenized = [gt.tokenize(s) for s in bad_sentences]
 
     # Pre-processing (removing punctuation marks and lower-casing all the words)
-    good_preprocessed = gt.preprocess(good_tokenized)
-    bad_preprocessed = gt.preprocess(bad_tokenized)
+    good_preprocessed = [gt.preprocess(s) for s in good_tokenized]
+    bad_preprocessed = [gt.preprocess(s) for s in bad_tokenized]
 
     # Lexicon (dict of words with their possible (universal) POS tags)
-    sentences = good_preprocessed + bad_preprocessed
-    lexicon = gt.create_lexicon(sentences)
+    sentences = good_sentences + bad_sentences
+    lexicon = gt.create_lexicon(sentences, lang)
+    print(lexicon)
 
     # Terminal symbols or vocabulary (set of words of the grammar)
     terminal = gt.get_terminal(lexicon)

@@ -8,37 +8,39 @@ Grammar tools library
 
 import nltk
 from nltk.tokenize import word_tokenize
+import spacy
+from spacy.tokens import Doc
 
-
-def tokenize(sentences):
+def tokenize(sentence):
     """
     Summary
     ----------
-    Tokenize a list of sentences. 
-    Ex: ["Hello world!", ["No way"]].
+    Tokenize a sentence. 
+    Ex: "Hello world!".
         
 
     Parameters
     ----------
-    sentences: list of strings.
+    sentence: string.
     
 
     Returns
     -------
-    List of tokenized sentences. 
-    Ex: [["Hello", "world", "!"], ["No", "way"]].
+    Tokenized sentence. 
+    Ex: ["Hello", "world", "!"]
     """
     
-    return [word_tokenize(s) for s in sentences]
+    return word_tokenize(sentence)
     
 
     
-def preprocess(sentences):
+def preprocess(sentence):
     """
     Summary
     ----------
-    Preprocesses a list of sentences. 
-    Ex: [["Hello", "world", "!"], ["No", "way"]]
+    Preprocesses a sentence. 
+    Ex: ["Hello", "world", "!"]
+    Ex: "Hello world!"
     
     This preprocessing:
         - Removes punctuation marks
@@ -47,20 +49,25 @@ def preprocess(sentences):
 
     Parameters
     ----------
-    sentences: list of tokenized sentences.
+    sentence: a tokenized sentence or a string.
     
 
     Returns
     -------
-    List of preprocessed tokenized sentences. 
-    Ex: [["hello", "world"], ["no", "way"]]
+    Preprocessed sentence.
+    Ex: ["hello", "world"]
+    Ex: "hello world"
     """
+
+    if isinstance(sentence, list):
+        return [w.lower() for w in sentence if w.isalpha()]
     
-    return [[w.lower() for w in s if w.isalpha()] for s in sentences]
+    else:
+        return ''.join(char for char in sentence.lower() if char.isalnum() or char.isspace())
 
 
 
-def create_lexicon(sentences):
+def create_lexicon(sentences, lang):
     """
     Summary
     ----------
@@ -72,6 +79,8 @@ def create_lexicon(sentences):
     Parameters
     ----------
     sentences: list of tokenized sentences.
+
+    lang: language code (eng/esp).
     
 
     Returns
@@ -80,14 +89,24 @@ def create_lexicon(sentences):
     Ex: {'NOUN':{'sun', 'moon'}, 'ADP':{'that'}, 'DET':{'that'}}
     """
     
-    # Load nltk models
-    nltk.download('averaged_perceptron_tagger_eng')
-    
     # Get lexicon
     lexicon = {}
                 
     for s in sentences:
-        sentence_lex = nltk.pos_tag(s, tagset='universal')
+
+        sentence = preprocess(s)
+
+        if lang == "eng":
+            # Load nltk model (english)
+            nltk.download('averaged_perceptron_tagger_eng')
+            sentence_lex = nltk.pos_tag(word_tokenize(sentence), tagset='universal')
+            
+        elif lang == "esp":
+            # Load spacy model (spanish)
+            nlp = spacy.load("es_core_news_sm")
+            doc = nlp(sentence)
+            sentence_lex = [[token.text, token.pos_] for token in doc]
+
         for w in sentence_lex:
             if w[1] not in lexicon:
                 lexicon[w[1]] = {w[0]}
