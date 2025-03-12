@@ -11,6 +11,7 @@ from nltk.tokenize import word_tokenize
 import spacy
 from spacy.tokens import Doc
 
+
 def tokenize(sentence):
     """
     Summary

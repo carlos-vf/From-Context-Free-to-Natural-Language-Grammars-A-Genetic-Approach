@@ -15,6 +15,7 @@ from collections import Counter
 import numpy as np
 import neptune
 import time
+import nltk
 
 from multiprocessing import Pool
 from functools import partial
@@ -232,10 +233,10 @@ def crossover(parents, symbols, max_rules, n_children):
                 
                 possible_rules = a_rule + b_rule
                 possible_rules =[list(tup) for tup in set(tuple(sublist) for sublist in possible_rules)]
-                #n_children = min(np.random.randint(len(possible_rules)) + 1, max_rules)
-                n_children = np.random.randint(len(possible_rules)) + 1
+                #n_rules = min(np.random.randint(len(possible_rules)) + 1, max_rules)
+                n_rules = np.random.randint(len(possible_rules)) + 1
                 
-                new_rules = random.sample(possible_rules, n_children)
+                new_rules = random.sample(possible_rules, n_rules)
                 new_individual[key] = new_rules
             
             # Otherwise, the rules are copied (preterminal rules cannot be mutated)
@@ -275,16 +276,30 @@ def mutation(individual, probability, start, nonterminal, preterminal):
                 for symbol in rule:
                     
                     mutation = np.random.choice(2, 1, p=[1-probability, probability])[0]
-                    
+
                     if mutation:
-                        new_set = sorted(nonterminal)
-                        new_set.remove(symbol)
-                        new_symbol = random.sample(new_set, 1)[0]
+                        mut_type = random.sample({"add", "del", "mod"}, 1)[0]
+
+                        # Symbol modification
+                        if mut_type == "mod":
+                            new_set = sorted(nonterminal)
+                            new_set.remove(symbol)
+                            new_symbols = [random.sample(new_set, 1)[0]]
+
+                        # Symbol addition
+                        elif mut_type == "add":
+                            new_symbols = [symbol, random.sample(sorted(nonterminal), 1)[0]]
+
+                        # Symbol deletion
+                        else:
+                            new_symbols = []
                         
                     else:
-                        new_symbol = symbol
-                        
-                    new_rule.append(new_symbol)
+                        new_symbols = [symbol]
+                    
+                    for s in new_symbols:
+                        new_rule.append(s)
+
                 new_rules.append(new_rule)
 
             new_indiv[key] = new_rules
@@ -301,15 +316,30 @@ def mutation(individual, probability, start, nonterminal, preterminal):
                     
                     mutation = np.random.choice(2, 1, p=[1-probability, probability])[0]
                     
+                    
                     if mutation:
-                        new_set = sorted(nonterminal.union(preterminal))
-                        new_set.remove(symbol)
-                        new_symbol = random.sample(new_set, 1)[0]
-                        
+                        mut_type = random.sample({"add", "del", "mod"}, 1)[0]
+
+                        # Symbol modification
+                        if mut_type == "mod":
+                            new_set = sorted(nonterminal.union(preterminal))
+                            new_set.remove(symbol)
+                            new_symbols = [random.sample(new_set, 1)[0]]
+
+                        # Symbol addition
+                        elif mut_type == "add":
+                            new_symbols = [symbol, random.sample(sorted(nonterminal.union(preterminal)), 1)[0]]
+
+                        # Symbol deletion
+                        else:
+                            new_symbols = []
+
                     else:
-                        new_symbol = symbol
-                        
-                    new_rule.append(new_symbol)
+                        new_symbols = [symbol]
+                    
+                    for s in new_symbols:
+                        new_rule.append(s)
+
                 new_rules.append(new_rule)
 
             new_indiv[key] = new_rules
@@ -344,7 +374,7 @@ if __name__ == '__main__':
     ###############################################################################
 
     print("\nLoading dataset...")
-    lang = "esp"
+    lang = "eng"
 
     # List of well-constructed sentences
     with open(f"dataset/{lang}/correct.txt", "r", encoding="utf-8") as file:
@@ -367,8 +397,8 @@ if __name__ == '__main__':
     print("Defining grammar...")
 
     # Tokenization
-    #good_tokenized = gt.tokenize(good_sentences)
-    #bad_tokenized = gt.tokenize(bad_sentences)
+    nltk.download('punkt_tab')
+    nltk.download('universal_tagset')
     good_tokenized = [gt.tokenize(s) for s in good_sentences]
     bad_tokenized = [gt.tokenize(s) for s in bad_sentences]
 
