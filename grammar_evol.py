@@ -16,6 +16,7 @@ import numpy as np
 import neptune
 import time
 import nltk
+import heapq
 
 from multiprocessing import Pool
 from functools import partial
@@ -108,9 +109,9 @@ def generate_rules(start, nonterminal, preterminal, max_children, max_length):
 
 
 
-def compute_fitnesses(population, correct_examples, wrong_examples):
+def compute_fitnesses(population, correct_examples, wrong_examples, bloat):
     
-    partial_function = partial(fitness, correct_examples=correct_examples, wrong_examples=wrong_examples)
+    partial_function = partial(fitness, correct_examples=correct_examples, wrong_examples=wrong_examples, bloat=bloat)
     
     with Pool() as pool:
         fitnesses = pool.map(partial_function, population)
@@ -119,7 +120,7 @@ def compute_fitnesses(population, correct_examples, wrong_examples):
 
     
     
-def fitness(individual, correct_examples, wrong_examples):
+def fitness(individual, correct_examples, wrong_examples, bloat):
     """
     Summary
     ----------
@@ -163,8 +164,11 @@ def fitness(individual, correct_examples, wrong_examples):
         if parsed == None:
             tn += 1
       
-            
-    return tp+tn
+    size = len([item for sublist in individual.values() for item in sublist])
+    fitness = tp + tn
+    adj_fitness = (1 - bloat) * fitness - bloat * size
+
+    return adj_fitness
     
 
 
@@ -199,10 +203,10 @@ def selection(population, fitness, t_size):
         
            
     
-def compute_crossovers(population, n_children, symbols, max_rules):
+def compute_crossovers(population, n_children, symbols):
 
     parents = [[population[i],population[i+1]] for i in range(0, len(population), 2)]
-    partial_function = partial(crossover, symbols=symbols, max_rules=max_rules, n_children=n_children)
+    partial_function = partial(crossover, symbols=symbols, n_children=n_children)
     
     with Pool() as pool:
         new_population = pool.map(partial_function, parents)
@@ -213,7 +217,7 @@ def compute_crossovers(population, n_children, symbols, max_rules):
         
         
     
-def crossover(parents, symbols, max_rules, n_children):
+def crossover(parents, symbols, n_children):
     
     parent_a = parents[0]
     parent_b = parents[1]
@@ -233,7 +237,6 @@ def crossover(parents, symbols, max_rules, n_children):
                 
                 possible_rules = a_rule + b_rule
                 possible_rules =[list(tup) for tup in set(tuple(sublist) for sublist in possible_rules)]
-                #n_rules = min(np.random.randint(len(possible_rules)) + 1, max_rules)
                 n_rules = np.random.randint(len(possible_rules)) + 1
                 
                 new_rules = random.sample(possible_rules, n_rules)
@@ -300,7 +303,8 @@ def mutation(individual, probability, start, nonterminal, preterminal):
                     for s in new_symbols:
                         new_rule.append(s)
 
-                new_rules.append(new_rule)
+                if len(new_rule) > 0:
+                    new_rules.append(new_rule)
 
             new_indiv[key] = new_rules
                     
@@ -340,7 +344,8 @@ def mutation(individual, probability, start, nonterminal, preterminal):
                     for s in new_symbols:
                         new_rule.append(s)
 
-                new_rules.append(new_rule)
+                if len(new_rule) > 0:
+                    new_rules.append(new_rule)
 
             new_indiv[key] = new_rules
         
@@ -351,7 +356,38 @@ def mutation(individual, probability, start, nonterminal, preterminal):
     return new_indiv
     
     
+def get_elite(population, fitnesses, k):
+    indices = [i for _, i in heapq.nlargest(k, zip(fitnesses, range(len(fitnesses))))]  
+    elit_indiv = [population[i] for i in indices]
+    elit_fit = [fitnesses[i] for i in indices]
+    return elit_indiv, elit_fit
+
+
+
+def replacement_indices(old_fitnesses, new_fitnesses, k):
+    indices = [i for _, i in heapq.nsmallest(k, zip(new_fitnesses, range(len(new_fitnesses))))]
     
+    new_indices = []
+    i = 0
+    while i < k:
+        if old_fitnesses[i] > new_fitnesses[indices[i]]:
+            new_indices.append(indices[i])
+            i += 1
+        else:
+            break
+    
+    return new_indices
+
+
+def replace_by_elite(population, new_fitnesses, elite_indiv, elite_fitness, k):
+
+    indices = replacement_indices(elite_fitness, new_fitnesses, k)
+
+    i = 0
+    for index in indices:
+        population[index] = elite_indiv[i]
+        new_fitnesses[index] = elite_fitness[i]
+        i += 1
 
    
 ###############################################################################
@@ -374,7 +410,7 @@ if __name__ == '__main__':
     ###############################################################################
 
     print("\nLoading dataset...")
-    lang = "eng"
+    lang = "esp"
 
     # List of well-constructed sentences
     with open(f"dataset/{lang}/correct.txt", "r", encoding="utf-8") as file:
@@ -432,18 +468,21 @@ if __name__ == '__main__':
     ###############################################################################
 
     # Paramters
-    n_individuals = 120
+    n_individuals = 80
     max_rules = 10
     max_symbols = 3
     p_mutation = 0.1
-    max_iter = 25
+    max_iter = 30
+    bloat = 0.005
+    elite = 0.1
 
     if neptune_sync:
         params = {  "n_individuals": n_individuals,
                     "max_rules" : max_rules,
                     "max_symbols" : max_symbols,
                     "p_mutation" : p_mutation,
-                    "dataset" : lang}
+                    "dataset" : lang,
+                    "bloat": bloat}
         run["parameters"] = params
         run["sys/tags"].add([f"{i}={j}" for (i,j) in params.items()])
 
@@ -452,51 +491,37 @@ if __name__ == '__main__':
 
 
     # Initialization of the population
+    t1 = time.time()
     print("Initialazing population...\n")
     population = initialize_population(start, nonterminal, preterminal, lexicon, n_individuals, max_rules, max_symbols)
     results = []
     best_individual = [0,0,0] # [individual, fitness, iteration]
     i = 0
+    n_elite = int(n_individuals * elite)
 
-    while(best_individual[1] < len(sentences) and i < max_iter):
+    # Fitness
+    fitnesses = compute_fitnesses(population, good_preprocessed, bad_preprocessed, bloat)
 
-        t1 = time.time()
 
-        # Fitness of the individuals
-        #print("Computing fitness...\n")
-        
-        fitnesses = compute_fitnesses(population, good_preprocessed, bad_preprocessed)
+    # Evolution
+    while(i < max_iter):
+
+        # Report
         best_fitness = max(fitnesses)
         if best_fitness > best_individual[1]:
             index_max = max(range(len(fitnesses)), key=fitnesses.__getitem__)
             best_individual = [population[index_max], best_fitness, i]
 
-        
-        # Tournament selection
-        #print("Creating tournament...\n")
-        t_size = int(n_individuals)
-        selected_individuals = selection(population, fitnesses, t_size)
-        
-        
-        # Crossover
-        #print("Performing crossover...\n")
-        children_per_cross = 4
-        new_children = compute_crossovers(selected_individuals, children_per_cross, set(start).union(set(nonterminal)), max_rules)
-        
-
-        # Mutation
-        #print("Applying mutation...\n")
-        population = compute_mutations(new_children, p_mutation, start, nonterminal, preterminal)
-
-
-        # Report
         avg_fitness = statistics.mean(fitnesses)
         results.append(avg_fitness)
+
         best_indiv_size = len([item for sublist in best_individual[0].values() for item in sublist])
         avg_indiv_size = []
+
         for indiv in population:
             avg_indiv_size.append(len([item for sublist in indiv.values() for item in sublist]))
         avg_indiv_size = statistics.mean(avg_indiv_size)
+        
         t = time.time() - t1
 
         print(f'Iteration {i}')
@@ -518,6 +543,34 @@ if __name__ == '__main__':
             # Iteration
             run["eval/iter/best"].append(best_individual[2])
             run["eval/iter/time"].append(t)
+
+
+        t1 = time.time()
+     
+        # Tournament selection
+        t_size = int(n_individuals)
+        selected_individuals = selection(population, fitnesses, t_size)
+        
+        
+        # Crossover
+        children_per_cross = 4
+        new_children = compute_crossovers(selected_individuals, children_per_cross, set(start).union(set(nonterminal)))
+        
+
+        # Mutation
+        new_population = compute_mutations(new_children, p_mutation, start, nonterminal, preterminal)
+
+
+        # Fitness of the individuals
+        new_fitnesses = compute_fitnesses(new_population, good_preprocessed, bad_preprocessed, bloat)
+
+
+        # Elitism
+        elite_indiv, elite_fitness = get_elite(population, fitnesses, n_elite)
+        replace_by_elite(new_population, new_fitnesses, elite_indiv, elite_fitness, n_elite)
+        population = new_population
+        fitnesses = new_fitnesses
+
 
         i += 1
 
