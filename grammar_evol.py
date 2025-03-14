@@ -283,7 +283,7 @@ def mutation(individual, probability, start, nonterminal, preterminal):
                     mutation = np.random.choice(2, 1, p=[1-probability, probability])[0]
 
                     if mutation:
-                        mut_type = random.sample({"add", "del", "mod"}, 1)[0]
+                        mut_type = random.choice(["add", "del", "mod"])
 
                         # Symbol modification
                         if mut_type == "mod":
@@ -324,7 +324,7 @@ def mutation(individual, probability, start, nonterminal, preterminal):
                     
                     
                     if mutation:
-                        mut_type = random.sample({"add", "del", "mod"}, 1)[0]
+                        mut_type = random.choice(["add", "del", "mod"])
 
                         # Symbol modification
                         if mut_type == "mod":
