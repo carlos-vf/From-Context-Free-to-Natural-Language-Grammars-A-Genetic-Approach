@@ -17,18 +17,20 @@ import neptune
 import time
 import nltk
 import heapq
+import argparse
 
 from multiprocessing import Pool
 from functools import partial
+from pathlib import Path
 
 
-def initialize_population(start, nonterminal, preterminal, lexicon, n_individuals, max_rules, max_symbols):
+def initialize_population(start, nonterminal, preterminal, lexicon, n_individuals, init_rules, init_symbols):
     
     population = []
     
     for i in range(n_individuals):
         
-        rules = generate_rules(start, nonterminal, preterminal, max_rules, max_symbols)
+        rules = generate_rules(start, nonterminal, preterminal, init_rules, init_symbols)
         
         # Compute the whole grammar of the CFL
         grammar = gt.get_full_grammar(rules, lexicon)
@@ -391,7 +393,7 @@ def replace_by_elite(population, new_fitnesses, elite_indiv, elite_fitness, k):
 
    
 ###############################################################################
-################################## NEPTUNE ####################################
+############################## NEPTUNE & ARGS #################################
 ###############################################################################
 if __name__ == '__main__':
 
@@ -401,7 +403,76 @@ if __name__ == '__main__':
         run = neptune.init_run(
             project="carlos-vf/Evolutive-Context-Free-Grammars",
             api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiIxOGI4MjZjOC05MGJmLTQyNmEtOWFjYS04MDU4MTRhMjdiMDMifQ==",
-        )  # your credentials
+        )  # credentials
+
+
+    # Create argument parser
+    parser = argparse.ArgumentParser(description="Grammar Evolution Parameters")
+
+    # Define expected command-line arguments
+    parser.add_argument("--lang", type=str, default="eng", help="Language (default: eng)")
+    parser.add_argument("--n_individuals", type=int, default=80, help="Number of individuals (default: 80)")
+    parser.add_argument("--max_iter", type=int, default=40, help="Max iterations (default: 5)")
+    parser.add_argument("--init_rules", type=int, default=10, help="Initial rules (default: 10)")
+    parser.add_argument("--init_symbols", type=int, default=3, help="Initial symbols (default: 3)")
+    parser.add_argument("--p_mutation", type=float, default=0.1, help="Mutation probability (default: 0.1)")
+    parser.add_argument("--bloat", type=float, default=0.0025, help="Bloat punishment factor (default: 0.0025)")
+    parser.add_argument("--elite", type=float, default=0.1, help="Elite percentage (default: 0.1)")
+    parser.add_argument("--n_nonterminal", type=int, default=4, help="Number of nonterminals (default: 4)")
+
+    # Parse arguments
+    args = parser.parse_args()
+    lang = args.lang
+    n_individuals = args.n_individuals
+    max_iter = args.max_iter
+    init_rules = args.init_rules
+    init_symbols = args.init_symbols
+    p_mutation = args.p_mutation
+    bloat = args.bloat
+    elite = args.elite
+    n_nonterminal = args.n_nonterminal
+
+
+    # Print parsed values
+    print(f"\nExecution Parameters:")
+    print(f"Language: {args.lang}")
+    print(f"Number of Individuals: {args.n_individuals}")
+    print(f"Max Iterations: {args.max_iter}")
+    print(f"Initial Rules: {args.init_rules}")
+    print(f"Initial Symbols: {args.init_symbols}")
+    print(f"Mutation Probability: {args.p_mutation}")
+    print(f"Bloat Factor: {args.bloat}")
+    print(f"Elite Percentage: {args.elite}")
+    print(f"Number of Nonterminals: {args.n_nonterminal}")
+
+
+    if neptune_sync:
+        params = {  "n_individuals": n_individuals,
+                    "init_rules" : init_rules,
+                    "init_symbols" : init_symbols,
+                    "p_mutation" : p_mutation,
+                    "dataset" : lang,
+                    "bloat": bloat,
+                    "nonterminal": n_nonterminal}
+        run["parameters"] = params
+        run["sys/tags"].add([f"{i}={j}" for (i,j) in params.items()])
+
+
+
+
+    ###############################################################################
+    ################################## FILES ####################################
+    ###############################################################################
+
+    filename = f"{lang}_{n_nonterminal}_{elite}_{bloat}.txt"
+    file_path = Path(f"results/{filename}")
+
+    if not file_path.exists():
+        file_path.touch()
+
+    f = open(file_path, "a")
+    f.write("iter\tavg_fitness\tavg_size\tbest_fitness_gen\tbest_size_gen\tbest_fitness_all\tbest_size_all\ttime\n")
+    
 
 
 
@@ -410,7 +481,6 @@ if __name__ == '__main__':
     ###############################################################################
 
     print("\nLoading dataset...")
-    lang = "esp"
 
     # List of well-constructed sentences
     with open(f"dataset/{lang}/correct.txt", "r", encoding="utf-8") as file:
@@ -433,8 +503,8 @@ if __name__ == '__main__':
     print("Defining grammar...")
 
     # Tokenization
-    nltk.download('punkt_tab')
-    nltk.download('universal_tagset')
+    nltk.download('punkt_tab', quiet=True)
+    nltk.download('universal_tagset', quiet=True)
     good_tokenized = [gt.tokenize(s) for s in good_sentences]
     bad_tokenized = [gt.tokenize(s) for s in bad_sentences]
 
@@ -445,7 +515,6 @@ if __name__ == '__main__':
     # Lexicon (dict of words with their possible (universal) POS tags)
     sentences = good_sentences + bad_sentences
     lexicon = gt.create_lexicon(sentences, lang)
-    print(lexicon)
 
     # Terminal symbols or vocabulary (set of words of the grammar)
     terminal = gt.get_terminal(lexicon)
@@ -454,7 +523,7 @@ if __name__ == '__main__':
     preterminal = gt.get_preterminal(lexicon)
                 
     # Non-terminal symbols
-    nonterminal = {'NP', 'VP'}
+    nonterminal = set([str(i) for i in range(n_nonterminal)])
 
     # Start symbol
     start = 'S'
@@ -467,25 +536,6 @@ if __name__ == '__main__':
     ############################ GRAMMAR EVOLUTION ################################
     ###############################################################################
 
-    # Paramters
-    n_individuals = 80
-    max_rules = 10
-    max_symbols = 3
-    p_mutation = 0.1
-    max_iter = 30
-    bloat = 0.005
-    elite = 0.1
-
-    if neptune_sync:
-        params = {  "n_individuals": n_individuals,
-                    "max_rules" : max_rules,
-                    "max_symbols" : max_symbols,
-                    "p_mutation" : p_mutation,
-                    "dataset" : lang,
-                    "bloat": bloat}
-        run["parameters"] = params
-        run["sys/tags"].add([f"{i}={j}" for (i,j) in params.items()])
-
 
     print("Starting evolutionary algorithm...\n")
 
@@ -493,8 +543,7 @@ if __name__ == '__main__':
     # Initialization of the population
     t1 = time.time()
     print("Initialazing population...\n")
-    population = initialize_population(start, nonterminal, preterminal, lexicon, n_individuals, max_rules, max_symbols)
-    results = []
+    population = initialize_population(start, nonterminal, preterminal, lexicon, n_individuals, init_rules, init_symbols)
     best_individual = [0,0,0] # [individual, fitness, iteration]
     i = 0
     n_elite = int(n_individuals * elite)
@@ -508,14 +557,14 @@ if __name__ == '__main__':
 
         # Report
         best_fitness = max(fitnesses)
+        index_max = max(range(len(fitnesses)), key=fitnesses.__getitem__)
         if best_fitness > best_individual[1]:
-            index_max = max(range(len(fitnesses)), key=fitnesses.__getitem__)
             best_individual = [population[index_max], best_fitness, i]
 
         avg_fitness = statistics.mean(fitnesses)
-        results.append(avg_fitness)
 
-        best_indiv_size = len([item for sublist in best_individual[0].values() for item in sublist])
+        best_indiv_size_gen = len([item for sublist in population[index_max].values() for item in sublist])
+        best_indiv_size_all = len([item for sublist in best_individual[0].values() for item in sublist])
         avg_indiv_size = []
 
         for indiv in population:
@@ -524,21 +573,27 @@ if __name__ == '__main__':
         
         t = time.time() - t1
 
-        print(f'Iteration {i}')
-        print(f'Average fitness = {avg_fitness}')
-        print(f'Fitness of each individual = {Counter(fitnesses)}')
-        print(f"Results until now: {results}")
-        print(f'Best individual: {best_individual}')
+        print(f'\nIteration {i}')
+        print(f'Average generation fitness = {avg_fitness}')
+        print(f'Average indiviudal size = {avg_indiv_size}')
+        print(f'Best indiviudal fitness (gen) = {best_fitness}')
+        print(f'Best individual size (gen) = {best_indiv_size_gen}')
+        print(f'Best indiviudal fitness (all) = {best_individual[1]}')
+        print(f'Best individual size (all) = {best_indiv_size_all}')
         
+        f.write(f"{i}\t{avg_fitness}\t{avg_indiv_size}\t{best_fitness}\t{best_indiv_size_gen}\t{best_individual[1]}\t{best_indiv_size_all}\t{t}\n")
+
         if neptune_sync:
 
             # Best individual up to now
-            run["eval/best_individual/fitness"].append(best_fitness)
-            run["eval/best_individual/size"].append(best_indiv_size)
+            run["eval/best_individual/fitness"].append(best_individual[1])
+            run["eval/best_individual/size"].append(best_indiv_size_all)
 
             # Current population
             run["eval/population/avg_fitness"].append(avg_fitness)
             run["eval/population/avg_size"].append(avg_indiv_size)
+            run["eval/population/best_fitness"].append(best_fitness)
+            run["eval/population/best_size"].append(best_indiv_size_gen)
 
             # Iteration
             run["eval/iter/best"].append(best_individual[2])
@@ -576,6 +631,8 @@ if __name__ == '__main__':
 
     if neptune_sync:
         run.stop()  
+
+    f.close()
 
 
 

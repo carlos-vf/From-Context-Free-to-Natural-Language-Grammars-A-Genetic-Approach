@@ -9,7 +9,6 @@ Grammar tools library
 import nltk
 from nltk.tokenize import word_tokenize
 import spacy
-from spacy.tokens import Doc
 
 
 def tokenize(sentence):
@@ -99,12 +98,12 @@ def create_lexicon(sentences, lang):
 
         if lang == "eng":
             # Load nltk model (english)
-            nltk.download('averaged_perceptron_tagger_eng')
+            nltk.download('averaged_perceptron_tagger_eng', quiet=True)
             sentence_lex = nltk.pos_tag(word_tokenize(sentence), tagset='universal')
             
         elif lang == "esp":
             # Load spacy model (spanish)
-            nlp = spacy.load("es_core_news_sm")
+            nlp = spacy.load("es_core_news_sm", quiet=True)
             doc = nlp(sentence)
             sentence_lex = [[token.text, token.pos_] for token in doc]
 
