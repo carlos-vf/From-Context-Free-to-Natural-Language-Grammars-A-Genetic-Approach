@@ -11,7 +11,6 @@ import random
 import grammar_tools as gt
 import statistics
 import earleyparser as ep
-from collections import Counter
 import numpy as np
 import neptune
 import time
@@ -283,7 +282,10 @@ def mutation(individual, probability, start, nonterminal, preterminal):
                     mutation = np.random.choice(2, 1, p=[1-probability, probability])[0]
 
                     if mutation:
-                        mut_type = random.choice(["add", "del", "mod"])
+                        if len(nonterminal) > 1:
+                            mut_type = random.choice(["add", "del", "mod"])
+                        else:
+                            mut_type = random.choice(["add", "del"])
 
                         # Symbol modification
                         if mut_type == "mod":

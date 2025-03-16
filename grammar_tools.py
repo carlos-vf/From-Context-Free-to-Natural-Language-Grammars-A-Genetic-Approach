@@ -9,6 +9,7 @@ Grammar tools library
 import nltk
 from nltk.tokenize import word_tokenize
 import spacy
+import logging
 
 
 def tokenize(sentence):
@@ -103,7 +104,8 @@ def create_lexicon(sentences, lang):
             
         elif lang == "esp":
             # Load spacy model (spanish)
-            nlp = spacy.load("es_core_news_sm", quiet=True)
+            logging.getLogger("spacy").setLevel(logging.ERROR)
+            nlp = spacy.load("es_core_news_sm")
             doc = nlp(sentence)
             sentence_lex = [[token.text, token.pos_] for token in doc]
 
