@@ -10,7 +10,7 @@ bloat=0.0025
 elite=0.1
 n_nonterminal=2
 
-for lang in "eng" "esp"; do
+for lang in "esp"; do
 
     # Vary elite
     #for e in 0.0 0.02 0.04 0.08 0.1 0.12 0.14 0.16 0.18 0.2; do

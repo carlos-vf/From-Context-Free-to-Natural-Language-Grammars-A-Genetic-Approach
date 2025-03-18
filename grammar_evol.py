@@ -238,10 +238,11 @@ def crossover(parents, symbols, n_children):
                 
                 possible_rules = a_rule + b_rule
                 possible_rules =[list(tup) for tup in set(tuple(sublist) for sublist in possible_rules)]
-                n_rules = np.random.randint(len(possible_rules)) + 1
-                
-                new_rules = random.sample(possible_rules, n_rules)
-                new_individual[key] = new_rules
+
+                if len(possible_rules) > 0:
+                    n_rules = np.random.randint(len(possible_rules)) + 1
+                    new_rules = random.sample(possible_rules, n_rules)
+                    new_individual[key] = new_rules
             
             # Otherwise, the rules are copied (preterminal rules cannot be mutated)
             else:
