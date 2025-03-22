@@ -84,16 +84,16 @@ plot_3d_hillshade(dataframes, variable_x="nonterminals", variable_z='avg_size')
 
 
 
-####################### SPANISH ##########################
+####################### SPANISH ##########################<
 # Bloat variation
 folder_path = "results/esp/bloat_variation" 
 dataframes = read_txt_files_to_dataframe(folder_path, key="bloat")
-plot_3d_hillshade(dataframes, variable_x="bloat", variable_z='avg_fitness') 
-plot_3d_hillshade(dataframes, variable_x="bloat", variable_z='avg_size') 
+#plot_3d_hillshade(dataframes, variable_x="bloat", variable_z='avg_fitness') 
+#plot_3d_hillshade(dataframes, variable_x="bloat", variable_z='avg_size') 
 
 # Nonterminal variation
 folder_path = "results/esp/nonterminals_variation" 
 dataframes = read_txt_files_to_dataframe(folder_path, key="nonterminals")
-plot_3d_hillshade(dataframes, variable_x="nonterminals", variable_z='avg_fitness') 
-plot_3d_hillshade(dataframes, variable_x="nonterminals", variable_z='avg_size') 
+#plot_3d_hillshade(dataframes, variable_x="nonterminals", variable_z='avg_fitness') 
+#plot_3d_hillshade(dataframes, variable_x="nonterminals", variable_z='avg_size') 
 

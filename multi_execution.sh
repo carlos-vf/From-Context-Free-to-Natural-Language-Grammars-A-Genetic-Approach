@@ -10,17 +10,18 @@ bloat=0.0025
 elite=0.1
 n_nonterminal=2
 
-python grammar_evol.py --lang "esp" --n_individuals "$n_individuals" --max_iter "$max_iter" --init_rules "$init_rules" --init_symbols "$init_symbols" --p_mutation "$p_mutation" --bloat "0" --elite "0.06" --n_nonterminal "$n_nonterminal"
 
 for lang in "eng"; do
 
+     
     # Vary nonterminals
-    for n in 1 2 3 4 5 6; do
-        python grammar_evol.py --lang "$lang" --n_individuals "$n_individuals" --max_iter "$max_iter" --init_rules "$init_rules" --init_symbols "$init_symbols" --p_mutation "$p_mutation" --bloat "$bloat" --elite "$elite" --n_nonterminal "$n"
-    done
+    #for n in 1 2 3 4 5 6; do
+    #    python grammar_evol.py --lang "$lang" --n_individuals "$n_individuals" --max_iter "$max_iter" --init_rules "$init_rules" --init_symbols "$init_symbols" --p_mutation "$p_mutation" --bloat "$bloat" --elite "$elite" --n_nonterminal "$n"
+    #done
 
+    # 0.00 0.02 0.04 0.06 0.08 0.10 0.12
     # Vary elite
-    for e in 0.00 0.02 0.04 0.06 0.08 0.10 0.12 0.14 0.16 0.18 0.20; do
+    for e in 0.14 0.16 0.18 0.20; do
         python grammar_evol.py --lang "$lang" --n_individuals "$n_individuals" --max_iter "$max_iter" --init_rules "$init_rules" --init_symbols "$init_symbols" --p_mutation "$p_mutation" --bloat "0" --elite "$e" --n_nonterminal "$n_nonterminal"
     done
 
