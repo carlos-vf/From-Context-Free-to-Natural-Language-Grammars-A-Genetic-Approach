@@ -28,7 +28,7 @@ def read_txt_files_to_dataframe(folder_path, key):
     return dataframes
 
 
-def plot_3d_hillshade(dataframes, variable_x, variable_z):
+def plot_3d_hillshade(dataframes, variable_x, variable_z, cmap, lang):
     # Combine all data into a grid
     all_x, all_y, all_z = [], [], []
     
@@ -57,7 +57,7 @@ def plot_3d_hillshade(dataframes, variable_x, variable_z):
     fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
     
     ls = LightSource(270, 45)
-    rgb = ls.shade(z_grid, cmap=cm.gist_earth, vert_exag=0.1, blend_mode='soft')
+    rgb = ls.shade(z_grid, cmap=cmap, vert_exag=0.1, blend_mode='soft')
     surf = ax.plot_surface(x_grid, y_grid, z_grid, rstride=1, cstride=1, facecolors=rgb,
                            linewidth=0, antialiased=False, shade=False)
     
@@ -65,35 +65,26 @@ def plot_3d_hillshade(dataframes, variable_x, variable_z):
     ax.set_ylabel("Iteration (Y)")
     ax.set_zlabel(f"{variable_z.capitalize()} (Z)")
     ax.set_title(f"{variable_x.capitalize()} vs. {variable_z.capitalize()}")
-    plt.savefig(f"results/plots/{variable_x}_{variable_z}_plot.png")
+    plt.savefig(f"results/plots/{lang}/{variable_x}_{variable_z}_plot.png")
 
 
 
-####################### ENGLISH ##########################
-# Bloat variation
-folder_path = "results/eng/bloat_variation" 
-dataframes = read_txt_files_to_dataframe(folder_path, key="bloat")
-plot_3d_hillshade(dataframes, variable_x="bloat", variable_z='avg_fitness') 
-plot_3d_hillshade(dataframes, variable_x="bloat", variable_z='avg_size') 
+for lang in ["eng", "esp"]:
 
-# Nonterminal variation
-folder_path = "results/eng/nonterminals_variation" 
-dataframes = read_txt_files_to_dataframe(folder_path, key="nonterminals")
-plot_3d_hillshade(dataframes, variable_x="nonterminals", variable_z='avg_fitness') 
-plot_3d_hillshade(dataframes, variable_x="nonterminals", variable_z='avg_size') 
+    # Elite variation
+    folder_path = f"results/{lang}/elite_variation" 
+    dataframes = read_txt_files_to_dataframe(folder_path, key="elite")
+    plot_3d_hillshade(dataframes, variable_x="elite", variable_z='avg_fitness', cmap=cm.gist_earth, lang=lang) 
+    plot_3d_hillshade(dataframes, variable_x="elite", variable_z='avg_size', cmap=cm.magma, lang=lang) 
 
+    # Bloat variation
+    folder_path = f"results/{lang}/bloat_variation" 
+    dataframes = read_txt_files_to_dataframe(folder_path, key="bloat")
+    plot_3d_hillshade(dataframes, variable_x="bloat", variable_z='avg_fitness', cmap=cm.gist_earth, lang=lang) 
+    plot_3d_hillshade(dataframes, variable_x="bloat", variable_z='avg_size', cmap=cm.magma, lang=lang) 
 
-
-####################### SPANISH ##########################<
-# Bloat variation
-folder_path = "results/esp/bloat_variation" 
-dataframes = read_txt_files_to_dataframe(folder_path, key="bloat")
-#plot_3d_hillshade(dataframes, variable_x="bloat", variable_z='avg_fitness') 
-#plot_3d_hillshade(dataframes, variable_x="bloat", variable_z='avg_size') 
-
-# Nonterminal variation
-folder_path = "results/esp/nonterminals_variation" 
-dataframes = read_txt_files_to_dataframe(folder_path, key="nonterminals")
-#plot_3d_hillshade(dataframes, variable_x="nonterminals", variable_z='avg_fitness') 
-#plot_3d_hillshade(dataframes, variable_x="nonterminals", variable_z='avg_size') 
-
+    # Nonterminal variation
+    folder_path = f"results/{lang}/nonterminals_variation" 
+    dataframes = read_txt_files_to_dataframe(folder_path, key="nonterminals")
+    plot_3d_hillshade(dataframes, variable_x="nonterminals", variable_z='avg_fitness', cmap=cm.gist_earth, lang=lang) 
+    plot_3d_hillshade(dataframes, variable_x="nonterminals", variable_z='avg_size', cmap=cm.magma, lang=lang) 

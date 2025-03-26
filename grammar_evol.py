@@ -128,9 +128,13 @@ def fitness(individual, correct_examples, wrong_examples, bloat):
     Computes the fitness for an individual. The individual (grammar) operates over a 
     dataset of examples (sentences). The fitness funtions is the sum of well-formed sentences
     that can be parsed given the grammar of the individual and the bad-formed sentences
-    that cannot be parsed given the same grammar.
+    that cannot be parsed given the same grammar.  
     
-    fitness = true positives + true negarives
+    If bloat ==  0:
+        fitness = true positives + true negarives
+
+    If bloat >  0:  
+        new_fitness = (1 - bloat) * fitness - bloat * size
 
 
     Parameters
@@ -140,6 +144,8 @@ def fitness(individual, correct_examples, wrong_examples, bloat):
     correct_examples: set of (tokenized) well-formed sentences
     
     wrong_examples: set of (tokenized) bad-formed sentences
+
+    bloat: punishment factor with respect the individual's size
     
 
     Returns
