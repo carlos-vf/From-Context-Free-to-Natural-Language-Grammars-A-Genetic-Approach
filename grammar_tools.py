@@ -3,7 +3,6 @@
 Grammar tools library
 
 @author: Carlos Velazquez Fernandez
-@version: 1.0
 """
 
 import nltk

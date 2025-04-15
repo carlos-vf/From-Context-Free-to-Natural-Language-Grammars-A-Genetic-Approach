@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Approximating Real Grammars from Context-free Languages using Grammar Evolution
+From Context-free to Natural Language Grammars: A Genetic Approach
 
 @author: Carlos Velazquez Fernandez
-@version: 3.0
 """
-
 
 import random
 import grammar_tools as gt
@@ -406,7 +404,7 @@ def replace_by_elite(population, new_fitnesses, elite_indiv, elite_fitness, k):
 ###############################################################################
 if __name__ == '__main__':
 
-    neptune_sync = True
+    neptune_sync = False
 
     if neptune_sync:
         run = neptune.init_run(

@@ -13,7 +13,7 @@ def read_txt_files_to_dataframe(folder_path, key):
     
     dataframes = {}
     for file in txt_files:
-        filename = file.split('/')[-1][0:-4]  # Extract file name without extension
+        filename = file.split('\\')[-1][0:-4]  # Extract file name without extension
         parts = filename.split('_')  # Split filename by '_'
         language, nonterminals, elite, bloat = parts[0], int(parts[1]), float(parts[2]), float(parts[3])
         
